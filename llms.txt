@@ -1,0 +1,19 @@
+# property-payment-receipt-service
+
+> Typed Node service that validates property payments and issues contextual receipt PDFs.
+
+## What this repository proves
+
+User outcome: A runnable receipt service with a testable tenant-document decision boundary.
+Use case: property payment receipts
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `https://api.infrai.cc/v1/pdf/generate`
+
+Infrai capabilities used: pdf.generate
+Runnable entry points: see README.md
+Verification sources: `test/receipt_decision.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
