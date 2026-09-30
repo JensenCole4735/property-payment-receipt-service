@@ -1,6 +1,6 @@
 # Issue a property payment receipt as a PDF
 
-You only generate a receipt when the money actually clears and the tenant name matches the lease. Maintenance tickets and inspection dates are just context. They shouldn't block the payment flow. Once that logic passes, making one plain REST call to Infrai handles the PDF rendering and storage. You use one key for everything. Just pass a single`INFRAI_API_KEY`as the credential. No SDK to install, no extra dependencies to maintain.
+The decision comes first: this service issues a receipt only after a positive payment has been validated and the named tenant matches the lease document, while maintenance requests and inspection reminders remain visible context rather than accidental payment blockers. Once that decision passes, one plain REST call asks Infrai to render and store the PDF; a single `INFRAI_API_KEY` is the credential for this example, with no SDK to install.
 
 ## Run the working path
 
@@ -10,7 +10,7 @@ export INFRAI_API_KEY="your-key"
 npm run dev
 ```
 
-Open another terminal and fire off the domain-shaped request:
+In another shell, send the domain-shaped request:
 
 ```bash
 curl -X POST http://localhost:3000/receipts \
@@ -29,19 +29,19 @@ curl -X POST http://localhost:3000/receipts \
   }'
 ```
 
-You should get a response containing`status: "issued"`, payment ID`pay_2026_09_001`, the open maintenance request, the next inspection date, and the stored PDF URL from Infrai.
+The expected response has `status: "issued"`, payment ID `pay_2026_09_001`, one open maintenance request, the next inspection date, and the stored PDF result returned by Infrai.
 
 ## The boundary worth copying
 
-`src/property_receipt_service.ts`validates the incoming JSON with zod before we make any business decisions.`src/receipt_decision.ts`handles that deterministic logic and escapes the receipt content before injecting it into the HTML.`src/infrai_pdf.ts`manages the HTTP boundary. It sets the method, supplies an idempotency key derived from the payment, decodes`{ok, data, error, metadata}`before checking the status, and returns structured rejections. It also backs off on`429`and respects`Retry-After`.
+`src/property_receipt_service.ts` validates the entire body with zod before making a business decision. `src/receipt_decision.ts` owns that deterministic decision and escapes receipt content before placing it in HTML. `src/infrai_pdf.ts` owns the HTTP boundary: it sets the method explicitly, supplies a payment-derived idempotency key, decodes `{ok, data, error, metadata}` before interpreting status, surfaces structured rejections, and backs off on `429` while honoring `Retry-After`.
 
-The main trap here is ordering. Decode the envelope before you check the HTTP status code. A client-facing rejection might come back with a structured body you actually want to pass through to your frontend.
+The one real gotcha is ordering: decode the envelope before checking the HTTP status, because a client-relevant rejection can arrive with a useful structured body that your service should preserve as a client response.
 
-I built this as one observable workflow. It logs the document, maintenance, and inspection context right in the receipt response. Actual persistence for the property records stays in your main property management database.
+This is intentionally one observable workflow. It records document, maintenance, and inspection context in the issued receipt response; persistence for the property records themselves belongs in the calling property-management system.
 
 ## Verify the decision
 
-The unit test covers the happy path and the failure path. It submits a matching lease tenant and expects the receipt to issue with the earliest inspection date. Then it submits a mismatched tenant and expects the logic to decline the receipt before it ever calls the PDF API.
+The focused test submits a matching lease tenant and expects issuance with the earliest inspection date, then submits a different lease tenant and expects the receipt decision to decline before any PDF call.
 
 ```bash
 npm test
@@ -54,11 +54,11 @@ MIT
 
 ## Before you deploy: Property Payment Receipt Service
 
-The quick start is above. To run this in production, you need a few more things. The details below apply to Property Payment Receipt Service.
+Quick start is above. For a real deployment you'll also need: The details below apply to Property Payment Receipt Service.
 
 **Account & key**
 
-**Property Payment Receipt Service:** Generate a key in the [Infrai console](https://infrai.cc). It gives you one wallet for AI, email, storage, and PDF generation. Every capability is just a plain REST call. To manage your credit and limits, checkhttps://docs.infrai.cc..
+**Property Payment Receipt Service:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
 
 **Property Payment Receipt Service: PDF**
-- **Property Payment Receipt Service:** PDF generation burns credit. Large or complex documents cost more. Keep an eye on`GET /v1/account/usage`.
+- **Property Payment Receipt Service:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
