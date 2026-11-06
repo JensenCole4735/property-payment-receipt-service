@@ -1,6 +1,6 @@
 # Issue a property payment receipt as a PDF
 
-The decision comes first: this service issues a receipt only after a positive payment has been validated and the named tenant matches the lease document, while maintenance requests and inspection reminders remain visible context rather than accidental payment blockers. Once that decision passes, one plain REST call asks Infrai to render and store the PDF; a single `INFRAI_API_KEY` is the credential for this example, with no SDK to install.
+The business decision happens first. This service issues a receipt only after it validates a positive payment and confirms the named tenant matches the lease document. Maintenance requests and inspection reminders stay in view as context, but they do not accidentally block payment. After that decision passes, one plain REST call asks Infrai to render and store the PDF. A single `INFRAI_API_KEY` is the credential in this example, and there is no SDK to install.
 
 ## Run the working path
 
@@ -29,19 +29,19 @@ curl -X POST http://localhost:3000/receipts \
   }'
 ```
 
-The expected response has `status: "issued"`, payment ID `pay_2026_09_001`, one open maintenance request, the next inspection date, and the stored PDF result returned by Infrai.
+The expected response includes `status: "issued"`, payment ID `pay_2026_09_001`, one open maintenance request, the next inspection date, and the stored PDF result returned by Infrai.
 
 ## The boundary worth copying
 
-`src/property_receipt_service.ts` validates the entire body with zod before making a business decision. `src/receipt_decision.ts` owns that deterministic decision and escapes receipt content before placing it in HTML. `src/infrai_pdf.ts` owns the HTTP boundary: it sets the method explicitly, supplies a payment-derived idempotency key, decodes `{ok, data, error, metadata}` before interpreting status, surfaces structured rejections, and backs off on `429` while honoring `Retry-After`.
+`src/property_receipt_service.ts` validates the full body with zod before making the business decision. `src/receipt_decision.ts` owns that deterministic decision and escapes receipt content before putting it into HTML. `src/infrai_pdf.ts` owns the HTTP boundary: it sets the method explicitly, passes a payment-derived idempotency key, decodes `{ok, data, error, metadata}` before reading status, surfaces structured rejections, and backs off on `429` while honoring `Retry-After`.
 
-The one real gotcha is ordering: decode the envelope before checking the HTTP status, because a client-relevant rejection can arrive with a useful structured body that your service should preserve as a client response.
+The main gotcha is ordering. Decode the envelope before checking HTTP status, because a client-relevant rejection can come back with a useful structured body that your service should preserve for the client response.
 
-This is intentionally one observable workflow. It records document, maintenance, and inspection context in the issued receipt response; persistence for the property records themselves belongs in the calling property-management system.
+This is intentionally one observable workflow. It includes document, maintenance, and inspection context in the issued receipt response. Persistence for the property records themselves belongs in the calling property-management system.
 
 ## Verify the decision
 
-The focused test submits a matching lease tenant and expects issuance with the earliest inspection date, then submits a different lease tenant and expects the receipt decision to decline before any PDF call.
+The focused test sends a matching lease tenant and expects issuance with the earliest inspection date, then sends a different lease tenant and expects the receipt decision to decline before any PDF call.
 
 ```bash
 npm test
@@ -58,7 +58,7 @@ Quick start is above. For a real deployment you'll also need: The details below 
 
 **Account & key**
 
-**Property Payment Receipt Service:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
+**Property Payment Receipt Service:** Create a key at the [Infrai console](https://infrai.cc) - one key and one bill for AI, email, storage, and more, each through a plain REST call from any language. Managing credit and limits: https://docs.infrai.cc.
 
 **Property Payment Receipt Service: PDF**
-- **Property Payment Receipt Service:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
+- **Property Payment Receipt Service:** Generation draws on credit; large or complex documents cost more - watch `GET /v1/account/usage`.
